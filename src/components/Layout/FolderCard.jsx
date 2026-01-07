@@ -262,7 +262,7 @@ const FolderCard = ({
         {isMenuVisible && (
           <div style={styles.menu}>
             {userRole === "admin" ? (
-              // Admin menu: Rename and Delete
+              
               <>
                 {onRename && (
                   <div style={styles.menuItem} onClick={handleRenameClick}>
@@ -276,7 +276,7 @@ const FolderCard = ({
                 )}
               </>
             ) : (
-              // User menu: Download (if approved) or Request Access
+              
               <>
                 {hasAccess ? (
                   <div
