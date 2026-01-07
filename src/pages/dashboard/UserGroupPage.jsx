@@ -41,7 +41,7 @@ export default function UserGroupPage() {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const resp = await fetch(`${API_BASE_URL}/api/users/me`, {
+        const resp = await fetch(`${API_BASE_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!resp.ok) return;
@@ -65,7 +65,7 @@ export default function UserGroupPage() {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/api/groups`, {
+      const response = await fetch(`${API_BASE_URL}/groups`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -136,7 +136,7 @@ export default function UserGroupPage() {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/api/groups`, {
+      const response = await fetch(`${API_BASE_URL}/groups`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -183,7 +183,7 @@ export default function UserGroupPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/groups/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

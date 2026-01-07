@@ -18,7 +18,7 @@ const UserAccessRequestPage = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/access/requests");
+      const data = await apiRequest("/access/requests");
       setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch access requests", error);
@@ -34,7 +34,7 @@ const UserAccessRequestPage = () => {
 
   const handleApprove = async (id) => {
     try {
-      await apiRequest(`/api/access/requests/${id}`, {
+      await apiRequest(`/access/requests/${id}`, {
         method: "PUT",
         body: { status: "approved" },
       });
@@ -47,7 +47,7 @@ const UserAccessRequestPage = () => {
 
   const handleReject = async (id) => {
     try {
-      await apiRequest(`/api/access/requests/${id}`, {
+      await apiRequest(`/access/requests/${id}`, {
         method: "PUT",
         body: { status: "rejected" },
       });
@@ -63,7 +63,7 @@ const UserAccessRequestPage = () => {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/api/access/requests/${requestId}`, {
+      await apiRequest(`/access/requests/${requestId}`, {
         method: "DELETE",
       });
       showToast("Access revoked successfully", "success");
@@ -78,7 +78,7 @@ const UserAccessRequestPage = () => {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/api/access/requests/${requestId}`, {
+      await apiRequest(`/access/requests/${requestId}`, {
         method: "PUT",
         body: { action: "revoke", accessType: accessTypeToRemove },
       });

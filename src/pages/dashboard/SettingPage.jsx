@@ -76,7 +76,7 @@ const ProfileSection = ({ showToast }) => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/settings/profile");
+      const data = await apiRequest("/settings/profile");
       setProfile(data);
       if (data.logoUrl) {
         setLogoPreview(data.logoUrl);
@@ -108,7 +108,7 @@ const ProfileSection = ({ showToast }) => {
       const formData = new FormData();
       formData.append("logo", file);
 
-      const response = await fetch(`${API_BASE_URL}/api/settings/profile/logo`, {
+      const response = await fetch(`${API_BASE_URL}/settings/profile/logo`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -142,7 +142,7 @@ const ProfileSection = ({ showToast }) => {
 
     try {
       setLoading(true);
-      await apiRequest("/api/settings/profile", {
+      await apiRequest("/settings/profile", {
         method: "PUT",
         body: {
           companyName: profile.companyName,
@@ -171,7 +171,7 @@ const ProfileSection = ({ showToast }) => {
       return;
     }
 
-    apiRequest("/api/settings/profile/change-email", {
+    apiRequest("/settings/profile/change-email", {
       method: "POST",
       body: { newEmail },
     })
@@ -385,7 +385,7 @@ const ResetPasswordSection = ({ showToast }) => {
 
     try {
       setLoading(true);
-      await apiRequest("/api/settings/reset-password", {
+      await apiRequest("/settings/reset-password", {
         method: "POST",
         body: passwords,
       });
@@ -501,7 +501,7 @@ const TagSection = ({ showToast }) => {
   const fetchTags = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/settings/tags");
+      const data = await apiRequest("/settings/tags");
       setTags(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch tags", err);
@@ -520,13 +520,13 @@ const TagSection = ({ showToast }) => {
     try {
       setLoading(true);
       if (editingTag) {
-        await apiRequest(`/api/settings/tags/${editingTag.ID}`, {
+        await apiRequest(`/settings/tags/${editingTag.ID}`, {
           method: "PUT",
           body: tagForm,
         });
         showToast("Tag updated successfully", "success");
       } else {
-        await apiRequest("/api/settings/tags", {
+        await apiRequest("/settings/tags", {
           method: "POST",
           body: tagForm,
         });
@@ -555,7 +555,7 @@ const TagSection = ({ showToast }) => {
 
     try {
       setLoading(true);
-      await apiRequest(`/api/settings/tags/${id}`, { method: "DELETE" });
+      await apiRequest(`/settings/tags/${id}`, { method: "DELETE" });
       showToast("Tag deleted successfully", "success");
       fetchTags();
     } catch (err) {

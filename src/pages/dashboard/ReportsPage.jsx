@@ -13,7 +13,7 @@ const ReportsPage = () => {
   const fetchFilesReport = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/reports/files");
+      const data = await apiRequest("/reports/files");
       setFilesData(Array.isArray(data) ? data : data?.data || []);
     } catch (e) {
       console.error("Failed to fetch files report", e.message || e);
@@ -25,7 +25,7 @@ const ReportsPage = () => {
   const fetchFileShareReport = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/reports/file-share");
+      const data = await apiRequest("/reports/file-share");
       setFileShareData(Array.isArray(data) ? data : data?.data || []);
     } catch (e) {
       console.error("Failed to fetch file share report", e.message || e);
@@ -36,7 +36,7 @@ const ReportsPage = () => {
 
   const fetchItemActivity = async (fileId) => {
     try {
-      const data = await apiRequest(`/api/reports/file/${fileId}/activity`);
+      const data = await apiRequest(`/reports/file/${fileId}/activity`);
       setItemActivity(data);
     } catch (e) {
       console.error("Failed to fetch activity", e.message || e);

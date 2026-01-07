@@ -43,7 +43,7 @@ const DashboardPage = () => {
   const fetchFolders = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/files/folders");
+      const data = await apiRequest("/files/folders");
       const items = Array.isArray(data) ? data : data?.data || [];
       const normalized = items.map((folder) => {
         const data = normalizeFolder(folder);
@@ -68,7 +68,7 @@ const DashboardPage = () => {
   const loadFavorites = async () => {
     try {
       setFavoritesLoading(true);
-      const data = await apiRequest("/api/favorites");
+      const data = await apiRequest("/favorites");
       const items = Array.isArray(data) ? data : data?.data || [];
       const folderIds = items
         .filter(
@@ -94,7 +94,7 @@ const DashboardPage = () => {
 
   const renameFolder = async (id, newTitle) => {
     try {
-      await apiRequest(`/api/files/folder/${id}`, {
+      await apiRequest(`/files/folder/${id}`, {
         method: "PUT",
         body: { name: newTitle },
       });
@@ -115,7 +115,7 @@ const DashboardPage = () => {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/api/files/folder/${id}`, { method: "DELETE" });
+      await apiRequest(`/files/folder/${id}`, { method: "DELETE" });
       setFolders((prev) => prev.filter((folder) => folder.id !== id));
       toastMsg("Folder moved to trash", "success");
     } catch (error) {
@@ -137,7 +137,7 @@ const DashboardPage = () => {
       try {
         setModalLoading(true);
         const payload = { name: newProject.title.trim() };
-        const created = await apiRequest("/api/files/folder", {
+        const created = await apiRequest("/files/folder", {
           method: "POST",
           body: payload,
         });
@@ -179,12 +179,12 @@ const DashboardPage = () => {
 
     try {
       if (isFavorite) {
-        await apiRequest(`/api/favorites/${folderId}?type=folder`, {
+        await apiRequest(`/favorites/${folderId}?type=folder`, {
           method: "DELETE",
         });
         toastMsg("Removed from favourites", "success");
       } else {
-        await apiRequest("/api/favorites", {
+        await apiRequest("/favorites", {
           method: "POST",
           body: { itemId: folderId, itemType: "folder" },
         });
@@ -200,7 +200,7 @@ const DashboardPage = () => {
   const handleDownloadFolder = async (folderId, folderName) => {
     try {
       // Check access
-      const check = await apiRequest(`/api/access/check?itemId=${folderId}&itemType=folder`);
+      const check = await apiRequest(`/access/check?itemId=${folderId}&itemType=folder`);
       if (userRole !== "admin" && !(check.accessTypes || []).includes("DOWNLOAD")) {
         toastMsg("You don't have download access. Please request access.", "error");
         return;
@@ -211,7 +211,7 @@ const DashboardPage = () => {
       const sizeBytes = folder.sizeBytes || folder.size || 0;
       const sizeMb = Math.max(1, Math.ceil((Number(sizeBytes) || 0) / (1024 * 1024)));
 
-      await apiRequest("/api/storage/add-folder", {
+      await apiRequest("/storage/add-folder", {
         method: "POST",
         body: { folderId, folderName, folderSizeMb: sizeMb },
       });
@@ -229,7 +229,7 @@ const DashboardPage = () => {
     }
 
     try {
-      await apiRequest("/api/access/request", {
+      await apiRequest("/access/request", {
         method: "POST",
         body: {
           itemId: folderId,

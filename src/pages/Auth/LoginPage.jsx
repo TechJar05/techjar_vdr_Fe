@@ -34,7 +34,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/request-otp`, {
+      const res = await fetch(`${API_BASE_URL}/auth/request-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -71,7 +71,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp: otpValue }),
@@ -113,7 +113,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalizedEmail }),
@@ -146,7 +146,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

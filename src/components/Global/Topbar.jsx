@@ -29,7 +29,7 @@ const Topbar = ({ title, onToggleSidebar, sidebarOpen, user }) => {
     const fetchProfile = async () => {
       try {
         setLoadingProfile(true);
-        const data = await apiRequest("/api/users/me");
+        const data = await apiRequest("/users/me");
         setProfile({
           fullName: data.name,
           email: data.email,
@@ -51,7 +51,7 @@ const Topbar = ({ title, onToggleSidebar, sidebarOpen, user }) => {
   const fetchNotifications = async () => {
     try {
       setNotifLoading(true);
-      const data = await apiRequest("/api/notifications");
+      const data = await apiRequest("/notifications");
       setNotifications(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to fetch notifications", err.message || err);
@@ -290,7 +290,7 @@ const Topbar = ({ title, onToggleSidebar, sidebarOpen, user }) => {
           <div style={styles.notifMenu}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <strong>Notifications</strong>
-              <button onClick={async () => { try { await apiRequest('/api/notifications', { method: 'DELETE' }); setNotifications([]); } catch(e){ console.error(e); } }} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Clear</button>
+              <button onClick={async () => { try { await apiRequest('/notifications', { method: 'DELETE' }); setNotifications([]); } catch(e){ console.error(e); } }} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Clear</button>
             </div>
             {notifLoading ? (
               <div style={{ padding: 12 }}>Loading...</div>
@@ -298,7 +298,7 @@ const Topbar = ({ title, onToggleSidebar, sidebarOpen, user }) => {
               <div style={{ padding: 12, color: '#6b7280' }}>No notifications</div>
             ) : (
               notifications.map((n) => (
-                <div key={n.ID} style={{ ...styles.notifItem, background: n.IS_READ ? '#fff' : '#f8fafc' }} onClick={async () => { try { await apiRequest(`/api/notifications/${n.ID}/read`, { method: 'PUT' }); setNotifications(prev => prev.map(p => p.ID === n.ID ? { ...p, IS_READ: true } : p)); } catch(e){ console.error(e); } }}>
+                <div key={n.ID} style={{ ...styles.notifItem, background: n.IS_READ ? '#fff' : '#f8fafc' }} onClick={async () => { try { await apiRequest(`/notifications/${n.ID}/read`, { method: 'PUT' }); setNotifications(prev => prev.map(p => p.ID === n.ID ? { ...p, IS_READ: true } : p)); } catch(e){ console.error(e); } }}>
                   <div style={styles.notifTitle}>{n.TITLE}</div>
                   <div style={{ fontSize: 13, color: '#374151' }}>{n.BODY}</div>
                   <div style={styles.notifTime}>{n.CREATED_AT ? new Date(n.CREATED_AT).toLocaleString() : ''}</div>

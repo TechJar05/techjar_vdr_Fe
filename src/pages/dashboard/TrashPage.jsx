@@ -41,7 +41,7 @@ export default function TrashPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiRequest("/api/trash");
+      const data = await apiRequest("/trash");
       setItems(Array.isArray(data) ? data : []);
       setPage(1);
     } catch (err) {
@@ -82,7 +82,7 @@ export default function TrashPage() {
     setConfirm({ open: false, id: null, message: "", action: null });
 
     try {
-      await apiRequest(`/api/trash/restore/${encodeURIComponent(id)}`, {
+      await apiRequest(`/trash/restore/${encodeURIComponent(id)}`, {
         method: "POST",
       });
 
@@ -105,7 +105,7 @@ export default function TrashPage() {
     setConfirm({ open: false, id: null, message: "", action: null });
 
     try {
-      await apiRequest(`/api/trash/${encodeURIComponent(id)}`, {
+      await apiRequest(`/trash/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
 

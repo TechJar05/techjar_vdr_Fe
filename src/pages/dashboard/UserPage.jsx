@@ -94,7 +94,7 @@ export default function UserPage() {
     if (roleFilter) params.set("role", roleFilter);
     params.set("page", page);
     params.set("limit", limit);
-    return `${API_BASE_URL}/api/users?${params.toString()}`;
+    return `${API_BASE_URL}/users?${params.toString()}`;
   };
 
   const fetchUsers = async (page = 1, limit = meta.limit) => {
@@ -169,7 +169,7 @@ export default function UserPage() {
     if (!email) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(email)}`, {
+      const res = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(email)}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -197,7 +197,7 @@ export default function UserPage() {
     if (!email) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(email)}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(email)}`, { method: "DELETE", credentials: "include" });
       if (!res.ok) {
         const txt = await res.text();
         throw new Error(txt || `Delete failed ${res.status}`);

@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen }) => {
   const fetchStorage = async () => {
     try {
       setStorageLoading(true);
-      const data = await apiRequest("/api/storage");
+      const data = await apiRequest("/storage");
       setStorage({
         totalQuotaMb: data.totalQuotaMb || 5000,
         usedMb: data.usedMb || 0,

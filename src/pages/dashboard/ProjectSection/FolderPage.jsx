@@ -61,7 +61,7 @@ const FolderPage = () => {
 
   const loadFavorites = async () => {
     try {
-      const data = await apiRequest("/api/favorites");
+      const data = await apiRequest("/favorites");
       const items = Array.isArray(data) ? data : data?.data || [];
       setFavorites(items.map(normalizeFavoriteItem));
     } catch (error) {
@@ -80,14 +80,14 @@ const FolderPage = () => {
       setCheckingAccess(true);
       
       // Check folder access
-      const folderCheck = await apiRequest(`/api/access/check?itemId=${id}&itemType=folder`);
+      const folderCheck = await apiRequest(`/access/check?itemId=${id}&itemType=folder`);
       setUserAccess(prev => ({ ...prev, [id]: folderCheck.accessTypes || [] }));
       
       // Check each file's access
       if (files && files.length > 0) {
         for (const file of files) {
           try {
-            const fileCheck = await apiRequest(`/api/access/check?itemId=${file.id}&itemType=file`);
+            const fileCheck = await apiRequest(`/access/check?itemId=${file.id}&itemType=file`);
             setUserAccess(prev => ({ ...prev, [file.id]: fileCheck.accessTypes || [] }));
           } catch (e) {
             console.warn(`Could not check access for file ${file.id}:`, e.message);
@@ -140,10 +140,10 @@ const FolderPage = () => {
     const type = itemType.toLowerCase();
     try {
       if (isFavoriteItem(itemId, type)) {
-        await apiRequest(`/api/favorites/${itemId}?type=${type}`, { method: "DELETE" });
+        await apiRequest(`/favorites/${itemId}?type=${type}`, { method: "DELETE" });
         toastMsg("Removed from favourites", "success");
       } else {
-        await apiRequest("/api/favorites", {
+        await apiRequest("/favorites", {
           method: "POST",
           body: { itemId, itemType: type },
         });
@@ -159,7 +159,7 @@ const FolderPage = () => {
   const fetchFolderMeta = async (force = false) => {
     if (folderDetails && !force) return;
     try {
-      const data = await apiRequest("/api/files/folders");
+      const data = await apiRequest("/files/folders");
       const list = Array.isArray(data) ? data : data?.data || [];
       const found = list.find((item) => (item.ID || item.id) === id);
       if (found) {
@@ -173,7 +173,7 @@ const FolderPage = () => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest(`/api/files/folder/${id}`);
+      const data = await apiRequest(`/files/folder/${id}`);
       const list = Array.isArray(data) ? data : data?.data || [];
       const normalized = list.map(normalizeFile);
       const folderSize = normalized.reduce((sum, file) => sum + (file.sizeBytes || 0), 0);
@@ -218,7 +218,7 @@ const FolderPage = () => {
       setUploading(true);
       const formData = new FormData();
       formData.append("file", file);
-      await apiRequest(`/api/files/upload/${id}`, {
+      await apiRequest(`/files/upload/${id}`, {
         method: "POST",
         body: formData,
       });
@@ -238,7 +238,7 @@ const FolderPage = () => {
 
   const handleView = async (fileId) => {
     try {
-      const data = await apiRequest(`/api/files/view/${fileId}`, { auth: false });
+      const data = await apiRequest(`/files/view/${fileId}`, { auth: false });
       if (data?.url) {
         window.open(data.url, "_blank");
       } else {
@@ -263,7 +263,7 @@ const FolderPage = () => {
 
       // Add folder with all contents to virtual storage (lifetime access)
       try {
-        await apiRequest("/api/storage/add-folder", {
+        await apiRequest("/storage/add-folder", {
           method: "POST",
           body: { folderId: id, folderName: folderDetails?.title || "Folder", folderSizeMb: sizeMb },
         });
@@ -292,7 +292,7 @@ const FolderPage = () => {
 
       // Always add to virtual storage (lifetime access). Do NOT trigger actual download.
       try {
-        await apiRequest("/api/storage/add", {
+        await apiRequest("/storage/add", {
           method: "POST",
           body: { itemId: fileId, itemName: fileName, fileSizeMb: sizeMb, itemType: "file" },
         });
@@ -315,7 +315,7 @@ const FolderPage = () => {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/api/files/file/${fileId}`, {
+      await apiRequest(`/files/file/${fileId}`, {
         method: "DELETE",
       });
       toastMsg("File moved to trash", "success");
@@ -329,7 +329,7 @@ const FolderPage = () => {
 
   const handleRequestAccess = async (itemId, itemName, itemType, accessType) => {
     try {
-      await apiRequest("/api/access/request", {
+      await apiRequest("/access/request", {
         method: "POST",
         body: {
           itemId,
@@ -347,7 +347,7 @@ const FolderPage = () => {
 
   const handleRequestCreateFolder = async () => {
     try {
-      await apiRequest("/api/access/request", {
+      await apiRequest("/access/request", {
         method: "POST",
         body: {
           itemId: id,
@@ -365,7 +365,7 @@ const FolderPage = () => {
 
   const handleRequestUpload = async () => {
     try {
-      await apiRequest("/api/access/request", {
+      await apiRequest("/access/request", {
         method: "POST",
         body: {
           itemId: id,
@@ -383,7 +383,7 @@ const FolderPage = () => {
 
   const handleRequestDownloadFolder = async () => {
     try {
-      await apiRequest("/api/access/request", {
+      await apiRequest("/access/request", {
         method: "POST",
         body: {
           itemId: id,

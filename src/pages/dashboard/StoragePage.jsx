@@ -15,7 +15,7 @@ const StoragePage = () => {
 
   const fetchStorage = async () => {
     try {
-      const data = await apiRequest("/api/storage");
+      const data = await apiRequest("/storage");
       setStorage({
         totalQuotaMb: data.totalQuotaMb || 5000,
         usedMb: data.usedMb || 0,
@@ -29,7 +29,7 @@ const StoragePage = () => {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/storage/files");
+      const data = await apiRequest("/storage/files");
       const list = Array.isArray(data) ? data : data?.data || [];
       setItems(list || []);
     } catch (e) {
@@ -58,9 +58,9 @@ const StoragePage = () => {
       return;
     }
 
-    // Try to open as a file via /api/files/view/:id (returns signed URL).
+    // Try to open as a file via /files/view/:id (returns signed URL).
     try {
-      const res = await apiRequest(`/api/files/view/${item.ITEM_ID}`, { auth: false });
+      const res = await apiRequest(`/files/view/${item.ITEM_ID}`, { auth: false });
       if (res?.url) {
         window.open(res.url, "_blank");
         return;
@@ -77,7 +77,7 @@ const StoragePage = () => {
     try {
       const ref = item.STORAGE_REF || item.ITEM_ID || item.ID;
       setRemoving(ref);
-      await apiRequest(`/api/storage/${ref}`, { method: "DELETE" });
+      await apiRequest(`/storage/${ref}`, { method: "DELETE" });
       await fetchStorage();
       await fetchItems();
     } catch (e) {

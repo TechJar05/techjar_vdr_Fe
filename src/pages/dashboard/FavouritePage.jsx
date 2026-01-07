@@ -36,7 +36,7 @@ const FavouritePage = () => {
   const fetchFavorites = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest("/api/favorites");
+      const data = await apiRequest("/favorites");
       const items = Array.isArray(data) ? data : data?.data || [];
       setFavorites(items.map(normalizeFavorite));
     } catch (error) {
@@ -63,7 +63,7 @@ const FavouritePage = () => {
   const handleToggleFavorite = async (itemId, itemType) => {
     try {
       setActionLoading(true);
-      await apiRequest(`/api/favorites/${itemId}?type=${itemType}`, { method: "DELETE" });
+      await apiRequest(`/favorites/${itemId}?type=${itemType}`, { method: "DELETE" });
       toastMsg("Removed from favourites", "success");
       fetchFavorites();
     } catch (error) {
@@ -76,7 +76,7 @@ const FavouritePage = () => {
 
   const handleView = async (fileId) => {
     try {
-      const data = await apiRequest(`/api/files/view/${fileId}`, { auth: false });
+      const data = await apiRequest(`/files/view/${fileId}`, { auth: false });
       if (data?.url) {
         window.open(data.url, "_blank");
       } else {
@@ -90,7 +90,7 @@ const FavouritePage = () => {
 
   const handleDownload = async (fileId, fileName) => {
     try {
-      const response = await apiRequest(`/api/files/download/${fileId}`, {
+      const response = await apiRequest(`/files/download/${fileId}`, {
         auth: true,
         skipJson: true,
       });

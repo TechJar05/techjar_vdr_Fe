@@ -41,7 +41,7 @@ const FolderCard = ({
       if (!isMenuVisible) return;
       setCheckingAccess(true);
       try {
-        const res = await apiRequest(`/api/access/check?itemId=${id}&itemType=folder`);
+        const res = await apiRequest(`/access/check?itemId=${id}&itemType=folder`);
         if (cancelled) return;
         setAccessTypes(res.accessTypes || []);
         setHasAccess(!!res.hasAccess || (res.accessTypes || []).includes("DOWNLOAD"));

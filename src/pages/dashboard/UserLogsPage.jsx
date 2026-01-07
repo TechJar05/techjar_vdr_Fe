@@ -146,7 +146,7 @@ export default function UserLogsPage() {
 
   const fetchUsers = async () => {
     try {
-      const data = await apiRequest("/api/users");
+      const data = await apiRequest("/users");
       if (Array.isArray(data)) {
         setUsers(data);
       }
@@ -166,7 +166,7 @@ export default function UserLogsPage() {
       if (filters.to) params.set("to", filters.to);
       params.set("limit", 400);
 
-      const response = await apiRequest(`/api/logs?${params.toString()}`);
+      const response = await apiRequest(`/logs?${params.toString()}`);
       const rows = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
       setLogs(rows);
     } catch (err) {
