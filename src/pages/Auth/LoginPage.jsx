@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import LoginLayout from "../../components/Layout/LoginLayout";
 import GlobalInputStyle from "../../components/Style/GlobalInputStyle";
@@ -7,7 +7,7 @@ import loader from "../../assets/GIF/loader.gif";
 import { API_BASE_URL } from "../../config/apiConfig";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCommentDots } from "@fortawesome/free-solid-svg-icons";
+import { faCommentDots, faBuilding } from "@fortawesome/free-solid-svg-icons";
 
 export default function LoginPage() {
   const [step, setStep] = useState("login");
@@ -18,8 +18,26 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
+  const [orgData, setOrgData] = useState(null);
+  const [showOrgRequired, setShowOrgRequired] = useState(false);
   const otpRefs = useRef([]);
   const nav = useNavigate();
+
+  // Check for active organization on component mount
+  useEffect(() => {
+    const activeOrg = localStorage.getItem("activeOrg");
+    if (activeOrg) {
+      const org = JSON.parse(activeOrg);
+      // Check if organization is authenticated and has valid plan
+      if (org.isAuthenticated || org.isActive) {
+        setOrgData(org);
+      } else {
+        setShowOrgRequired(true);
+      }
+    } else {
+      setShowOrgRequired(true);
+    }
+  }, []);
 
   const toastMsg = (msg) => {
     setToast(msg);
@@ -177,6 +195,35 @@ export default function LoginPage() {
     }
   };
 
+  // If organization is not logged in, show organization required screen
+  if (showOrgRequired) {
+    return (
+      <LoginLayout>
+        <div style={styles.orgRequiredContainer}>
+          <div style={styles.orgRequiredIcon}>
+            <FontAwesomeIcon icon={faBuilding} style={{ fontSize: 32, color: "#f59e0b" }} />
+          </div>
+          <h2 style={styles.orgRequiredTitle}>Organization Login Required</h2>
+          <p style={styles.orgRequiredText}>
+            Please login with your organization account first before accessing user login.
+          </p>
+          <button
+            style={styles.orgRequiredBtn}
+            onClick={() => nav("/org/login")}
+          >
+            Go to Organization Login
+          </button>
+          <p style={styles.orgRequiredSubtext}>
+            Don't have an organization?{" "}
+            <span style={styles.orgRequiredLink} onClick={() => nav("/org/register")}>
+              Register Now
+            </span>
+          </p>
+        </div>
+      </LoginLayout>
+    );
+  }
+
   return (
     <LoginLayout>
       <GlobalInputStyle />
@@ -185,6 +232,14 @@ export default function LoginPage() {
       {loading && (
         <div style={styles.loaderOverlay}>
           <img src={loader} alt="Loading..." style={styles.loaderImg} />
+        </div>
+      )}
+
+      {/* Organization Info Badge */}
+      {orgData && (
+        <div style={styles.orgBadge}>
+          <FontAwesomeIcon icon={faBuilding} style={{ marginRight: 8, color: "#10b981" }} />
+          <span>{orgData.organizationName || "Organization"}</span>
         </div>
       )}
 
@@ -222,6 +277,15 @@ export default function LoginPage() {
             </p>
             <p style={styles.forgotText} onClick={() => setStep("forgot-email")}>
               Forgot password?
+            </p>
+          </div>
+
+          <div style={styles.orgSection}>
+            <p style={styles.orgText}>
+              Don't have an organization yet?{" "}
+              <span style={styles.orgLink} onClick={() => nav("/org/register")}>
+                Register Organization
+              </span>
             </p>
           </div>
         </>
@@ -491,5 +555,83 @@ const styles = {
     textAlign: "center",
     cursor: "pointer",
     marginTop: 10,
+  },
+  orgSection: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTop: "1px solid #e5e7eb",
+    textAlign: "center",
+  },
+  orgText: {
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  orgLink: {
+    color: "#10b981",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  // Organization Required Screen Styles
+  orgRequiredContainer: {
+    textAlign: "center",
+    padding: "20px 0",
+  },
+  orgRequiredIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #fefce8 0%, #fef08a 100%)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 20px",
+    boxShadow: "0 4px 12px rgba(245, 158, 11, 0.2)",
+  },
+  orgRequiredTitle: {
+    fontSize: 20,
+    fontWeight: 600,
+    color: "#111827",
+    marginBottom: 10,
+  },
+  orgRequiredText: {
+    fontSize: 14,
+    color: "#6b7280",
+    lineHeight: 1.6,
+    marginBottom: 24,
+  },
+  orgRequiredBtn: {
+    width: "100%",
+    padding: "12px 20px",
+    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+  },
+  orgRequiredSubtext: {
+    marginTop: 16,
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  orgRequiredLink: {
+    color: "#10b981",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  orgBadge: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "8px 16px",
+    background: "#f0fdf4",
+    borderRadius: 8,
+    marginBottom: 16,
+    fontSize: 13,
+    color: "#065f46",
+    fontWeight: 500,
+    border: "1px solid #10b981",
   },
 };

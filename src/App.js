@@ -16,6 +16,12 @@ import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
 import FolderPage from './pages/dashboard/ProjectSection/FolderPage';
 
+// Organization Pages
+import OrganizationRegisterPage from "./pages/Organization/OrganizationRegisterPage";
+import OrganizationLoginPage from "./pages/Organization/OrganizationLoginPage";
+import PlanSelectionPage from "./pages/Organization/PlanSelectionPage";
+import PlanCheckoutPage from "./pages/Organization/PlanCheckoutPage";
+
 const DashboardLayout = ({ sidebarOpen, toggleSidebar }) => (
   <div style={{ display: "flex", height: "100vh" }}>
     <Sidebar isOpen={sidebarOpen} />
@@ -59,16 +65,24 @@ const AppWrapper = () => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const location = useLocation();
 
-  // Treat both "/" and "/register" as pages that should hide the dashboard layout
-  const hideLayout = location.pathname === "/" || location.pathname === "/register";
+  // Pages that should hide the dashboard layout (full-screen auth/org pages)
+  const authPaths = ["/", "/register", "/org/register", "/org/login", "/org/plans", "/org/checkout"];
+  const hideLayout = authPaths.includes(location.pathname);
 
   return (
     <>
       {hideLayout ? (
-        // When layout is hidden, render routes for login/register (full-screen)
+        // When layout is hidden, render routes for auth/organization pages (full-screen)
         <Routes>
+          {/* User/Admin Auth Routes */}
           <Route path="/" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
+          {/* Organization Routes */}
+          <Route path="/org/register" element={<OrganizationRegisterPage />} />
+          <Route path="/org/login" element={<OrganizationLoginPage />} />
+          <Route path="/org/plans" element={<PlanSelectionPage />} />
+          <Route path="/org/checkout" element={<PlanCheckoutPage />} />
         </Routes>
       ) : (
         // Dashboard layout with its own nested routes
