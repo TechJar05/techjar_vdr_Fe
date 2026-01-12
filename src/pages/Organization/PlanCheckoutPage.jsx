@@ -15,15 +15,13 @@ import {
   faCalendarAlt,
   faReceipt,
   faTag,
-  faUserPlus
+  faUserPlus,
+  faIndianRupeeSign
 } from "@fortawesome/free-solid-svg-icons";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function PlanCheckoutPage() {
   const [formData, setFormData] = useState({
-    cardName: "",
-    cardNumber: "",
-    expiry: "",
-    cvv: "",
     couponCode: "",
   });
   const [planData, setPlanData] = useState(null);
@@ -32,7 +30,28 @@ export default function PlanCheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState(null);
   const nav = useNavigate();
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    script.onerror = () => {
+      console.error("Failed to load Razorpay script");
+      setRazorpayLoaded(false);
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const selectedPlan = localStorage.getItem("selectedPlan");
@@ -58,23 +77,7 @@ export default function PlanCheckoutPage() {
   };
 
   const handleChange = (e) => {
-    let { name, value } = e.target;
-
-    if (name === "cardNumber") {
-      value = value.replace(/\s/g, "").replace(/(\d{4})/g, "$1 ").trim();
-      if (value.length > 19) return;
-    }
-
-    if (name === "expiry") {
-      value = value.replace(/\D/g, "");
-      if (value.length >= 2) {
-        value = value.slice(0, 2) + "/" + value.slice(2, 4);
-      }
-      if (value.length > 5) return;
-    }
-
-    if (name === "cvv" && value.length > 4) return;
-
+    const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
@@ -93,7 +96,7 @@ export default function PlanCheckoutPage() {
     const coupon = validCoupons[formData.couponCode.toUpperCase()];
     if (coupon) {
       setAppliedCoupon({ code: formData.couponCode.toUpperCase(), ...coupon });
-      toastMsg(`Coupon applied! ${coupon.type === "percent" ? `${coupon.discount}% off` : `$${coupon.discount} off`}`);
+      toastMsg(`Coupon applied! ${coupon.type === "percent" ? `${coupon.discount}% off` : `₹${coupon.discount} off`}`);
     } else {
       toastMsg("Invalid coupon code", "error");
     }
@@ -126,39 +129,122 @@ export default function PlanCheckoutPage() {
     };
   };
 
-  const validateForm = () => {
-    if (!formData.cardName.trim()) {
-      toastMsg("Cardholder name is required", "error");
-      return false;
+  // Create Razorpay order and open checkout modal
+  const handlePayment = async () => {
+    if (!razorpayLoaded) {
+      toastMsg("Payment gateway is loading. Please try again.", "error");
+      return;
     }
-    if (formData.cardNumber.replace(/\s/g, "").length < 16) {
-      toastMsg("Please enter a valid card number", "error");
-      return false;
-    }
-    if (formData.expiry.length < 5) {
-      toastMsg("Please enter a valid expiry date", "error");
-      return false;
-    }
-    if (formData.cvv.length < 3) {
-      toastMsg("Please enter a valid CVV", "error");
-      return false;
-    }
-    return true;
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+    if (!orgData?.id) {
+      toastMsg("Organization data not found. Please register again.", "error");
+      nav("/org/register");
+      return;
+    }
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      setPaymentSuccess(true);
+    try {
+      // Step 1: Create order on backend
+      const totals = calculateTotal();
+      const res = await fetch(`${API_BASE_URL}/org/payment/create-order`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId: orgData.id,
+          planType: planData.planId,
+          amount: parseFloat(totals.total),
+        }),
+      });
 
-      // Store organization as active
+      const orderData = await res.json();
+
+      if (!res.ok) {
+        toastMsg(orderData.error || "Failed to create payment order", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Open Razorpay checkout modal
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "VDR - Virtual Data Room",
+        description: `${planData.planName} Plan - ${planData.duration}`,
+        order_id: orderData.orderId,
+        handler: async function (response) {
+          // Step 3: Verify payment on backend
+          await verifyPayment(response);
+        },
+        prefill: {
+          name: orgData.organizationName,
+          email: orgData.email,
+          contact: orgData.phone || "",
+        },
+        notes: {
+          organizationId: orgData.id,
+          planType: planData.planId,
+        },
+        theme: {
+          color: "#10b981",
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+            toastMsg("Payment cancelled", "error");
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.on("payment.failed", function (response) {
+        setLoading(false);
+        toastMsg(`Payment failed: ${response.error.description}`, "error");
+      });
+
+      razorpay.open();
+      setLoading(false);
+    } catch (err) {
+      console.error("Payment error:", err);
+      toastMsg("Failed to initiate payment. Please try again.", "error");
+      setLoading(false);
+    }
+  };
+
+  // Verify payment after Razorpay checkout success
+  const verifyPayment = async (response) => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/org/payment/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          organizationId: orgData.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toastMsg(data.error || "Payment verification failed", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Payment successful - store organization data and show success
+      setPaymentDetails({
+        paymentId: response.razorpay_payment_id,
+        orderId: response.razorpay_order_id,
+      });
+
       localStorage.setItem("activeOrg", JSON.stringify({
         ...orgData,
+        ...data.organization,
         plan: planData,
         subscriptionDate: new Date().toISOString(),
         isActive: true,
@@ -168,7 +254,15 @@ export default function PlanCheckoutPage() {
       localStorage.removeItem("pendingOrg");
       localStorage.removeItem("selectedPlan");
       localStorage.removeItem("orgSession");
-    }, 2500);
+
+      setPaymentSuccess(true);
+      toastMsg("Payment successful! Plan activated.");
+    } catch (err) {
+      console.error("Verification error:", err);
+      toastMsg("Payment verification failed. Please contact support.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateAdmin = () => {
@@ -210,7 +304,7 @@ export default function PlanCheckoutPage() {
             </div>
             <div style={{ ...styles.successDetailItem, borderBottom: "none" }}>
               <span style={styles.successDetailLabel}>Amount Paid</span>
-              <span style={styles.successDetailValue}>${totals.total}</span>
+              <span style={styles.successDetailValue}>₹{totals.total}</span>
             </div>
           </div>
 
@@ -292,77 +386,19 @@ export default function PlanCheckoutPage() {
             </div>
           </div>
 
-          <h2 style={styles.formTitle}>Payment Details</h2>
-          <p style={styles.formSubtitle}>Complete your purchase to activate your subscription</p>
+          <h2 style={styles.formTitle}>Complete Your Purchase</h2>
+          <p style={styles.formSubtitle}>Secure payment powered by Razorpay</p>
 
-          <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.form}>
             <div style={styles.cardIcons}>
               <FontAwesomeIcon icon={faCreditCard} style={styles.cardIcon} />
-              <span style={styles.cardText}>We accept all major credit cards</span>
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Cardholder Name</label>
-              <input
-                type="text"
-                name="cardName"
-                placeholder="Name on card"
-                value={formData.cardName}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                <FontAwesomeIcon icon={faCreditCard} style={styles.labelIcon} />
-                Card Number
-              </label>
-              <input
-                type="text"
-                name="cardNumber"
-                placeholder="1234 5678 9012 3456"
-                value={formData.cardNumber}
-                onChange={handleChange}
-                style={styles.input}
-              />
-            </div>
-
-            <div style={styles.inputRow}>
-              <div style={styles.inputGroupHalf}>
-                <label style={styles.label}>
-                  <FontAwesomeIcon icon={faCalendarAlt} style={styles.labelIcon} />
-                  Expiry Date
-                </label>
-                <input
-                  type="text"
-                  name="expiry"
-                  placeholder="MM/YY"
-                  value={formData.expiry}
-                  onChange={handleChange}
-                  style={styles.input}
-                />
-              </div>
-              <div style={styles.inputGroupHalf}>
-                <label style={styles.label}>
-                  <FontAwesomeIcon icon={faLock} style={styles.labelIcon} />
-                  CVV
-                </label>
-                <input
-                  type="password"
-                  name="cvv"
-                  placeholder="***"
-                  value={formData.cvv}
-                  onChange={handleChange}
-                  style={styles.input}
-                />
-              </div>
+              <span style={styles.cardText}>Pay securely with Razorpay - Cards, UPI, Netbanking & more</span>
             </div>
 
             <div style={styles.couponSection}>
               <label style={styles.label}>
                 <FontAwesomeIcon icon={faTag} style={styles.labelIcon} />
-                Coupon Code
+                Coupon Code (Optional)
               </label>
               {appliedCoupon ? (
                 <div style={styles.appliedCoupon}>
@@ -391,16 +427,31 @@ export default function PlanCheckoutPage() {
               )}
             </div>
 
-            <button type="submit" style={styles.payBtn}>
-              <FontAwesomeIcon icon={faLock} style={{ marginRight: 10 }} />
-              Pay ${totals.total}
+            <div style={styles.paymentMethodsSection}>
+              <p style={styles.paymentMethodsTitle}>Accepted Payment Methods:</p>
+              <div style={styles.paymentMethodsList}>
+                <span style={styles.paymentMethod}>Credit/Debit Cards</span>
+                <span style={styles.paymentMethod}>UPI</span>
+                <span style={styles.paymentMethod}>Net Banking</span>
+                <span style={styles.paymentMethod}>Wallets</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              style={styles.payBtn}
+              onClick={handlePayment}
+              disabled={!razorpayLoaded || loading}
+            >
+              <FontAwesomeIcon icon={faIndianRupeeSign} style={{ marginRight: 10 }} />
+              Pay {totals.total} INR
             </button>
 
             <div style={styles.securityNote}>
               <FontAwesomeIcon icon={faShieldHalved} style={styles.securityIcon} />
-              <span>Your payment is secured with 256-bit SSL encryption</span>
+              <span>100% Secure Payment. PCI-DSS Compliant.</span>
             </div>
-          </form>
+          </div>
         </div>
 
         {/* Right Side - Order Summary */}
@@ -680,6 +731,31 @@ const styles = {
   couponInputRow: {
     display: "flex",
     gap: "10px",
+  },
+  paymentMethodsSection: {
+    background: "#f9fafb",
+    borderRadius: "10px",
+    padding: "16px",
+    marginBottom: "8px",
+  },
+  paymentMethodsTitle: {
+    fontSize: "13px",
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: "10px",
+  },
+  paymentMethodsList: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+  },
+  paymentMethod: {
+    fontSize: "12px",
+    color: "#6b7280",
+    background: "#fff",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    border: "1px solid #e5e7eb",
   },
   applyCouponBtn: {
     padding: "14px 20px",

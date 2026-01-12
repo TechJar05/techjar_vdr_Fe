@@ -16,13 +16,17 @@ import {
   faShieldHalved,
   faUsers,
   faFolderOpen,
-  faLock
+  faLock,
+  faKey
 } from "@fortawesome/free-solid-svg-icons";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function OrganizationRegisterPage() {
   const [formData, setFormData] = useState({
     organizationName: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     phone: "",
     website: "",
     address: "",
@@ -54,6 +58,18 @@ export default function OrganizationRegisterPage() {
       toastMsg("Please enter a valid email!", "error");
       return false;
     }
+    if (!formData.password) {
+      toastMsg("Password is required!", "error");
+      return false;
+    }
+    if (formData.password.length < 6) {
+      toastMsg("Password must be at least 6 characters!", "error");
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toastMsg("Passwords do not match!", "error");
+      return false;
+    }
     if (!formData.phone.trim()) {
       toastMsg("Phone number is required!", "error");
       return false;
@@ -66,20 +82,46 @@ export default function OrganizationRegisterPage() {
     if (!validateForm()) return;
 
     setLoading(true);
-    // Simulate API call - will be replaced with actual backend integration
-    setTimeout(() => {
-      setLoading(false);
-      // Store organization data temporarily
+    try {
+      const res = await fetch(`${API_BASE_URL}/org/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationName: formData.organizationName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          website: formData.website,
+          address: formData.address,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toastMsg(data.error || "Registration failed!", "error");
+        setLoading(false);
+        return;
+      }
+
+      // Store organization data temporarily for plan selection
       localStorage.setItem("pendingOrg", JSON.stringify({
+        id: data.organization.id,
         organizationName: formData.organizationName,
         email: formData.email,
         phone: formData.phone,
         website: formData.website,
         address: formData.address,
       }));
+
       toastMsg("Organization registered! Select a plan to continue.");
       setTimeout(() => nav("/org/plans"), 1200);
-    }, 1500);
+    } catch (err) {
+      console.error("Registration error:", err);
+      toastMsg("Failed to connect to server!", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -190,6 +232,36 @@ export default function OrganizationRegisterPage() {
                   name="email"
                   placeholder="company@example.com"
                   value={formData.email}
+                  onChange={handleChange}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  <FontAwesomeIcon icon={faKey} style={styles.labelIcon} />
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Enter password (min. 6 characters)"
+                  value={formData.password}
+                  onChange={handleChange}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  <FontAwesomeIcon icon={faLock} style={styles.labelIcon} />
+                  Confirm Password *
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
                   onChange={handleChange}
                   style={styles.input}
                 />

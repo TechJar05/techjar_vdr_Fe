@@ -200,11 +200,11 @@ export default function PlanSelectionPage() {
 
                 <div style={styles.priceSection}>
                   <div style={styles.priceWrapper}>
-                    <span style={styles.currency}>$</span>
+                    <span style={styles.currency}>₹</span>
                     <span style={styles.price}>{plan.price}</span>
                   </div>
                   <p style={styles.pricePerMonth}>
-                    ${plan.pricePerMonth}/month
+                    ₹{plan.pricePerMonth}/month
                   </p>
                 </div>
 

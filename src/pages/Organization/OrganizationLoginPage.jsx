@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import GlobalInputStyle from "../../components/Style/GlobalInputStyle";
 import BottomLine from "../../components/Style/BottomLine";
@@ -11,23 +11,20 @@ import {
   faLock,
   faShieldHalved,
   faArrowRight,
-  faCommentDots,
   faExclamationTriangle,
-  faCalendarXmark,
-  faCheckCircle
+  faCalendarXmark
 } from "@fortawesome/free-solid-svg-icons";
+import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function OrganizationLoginPage() {
-  const [step, setStep] = useState("login"); // login, otp, plan-required, plan-expired
+  const [step, setStep] = useState("login"); // login, plan-required, plan-expired
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [toast, setToast] = useState({ message: "", type: "" });
   const [loading, setLoading] = useState(false);
   const [orgData, setOrgData] = useState(null);
-  const otpRefs = useRef([]);
   const nav = useNavigate();
 
   const toastMsg = (message, type = "success") => {
@@ -37,20 +34,6 @@ export default function OrganizationLoginPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleOtp = (i, v) => {
-    if (!/^\d?$/.test(v)) return;
-    const copy = [...otp];
-    copy[i] = v;
-    setOtp(copy);
-    if (v && i < 5) otpRefs.current[i + 1].focus();
-  };
-
-  const handleKeyDown = (i, e) => {
-    if (e.key === "Backspace" && !otp[i] && i > 0) {
-      otpRefs.current[i - 1].focus();
-    }
   };
 
   const handleLogin = async (e) => {
@@ -66,88 +49,78 @@ export default function OrganizationLoginPage() {
 
     setLoading(true);
 
-    // Simulate API call - will be replaced with actual backend integration
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const res = await fetch(`${API_BASE_URL}/org/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-      // Simulate checking organization from backend
-      // In real implementation, this would come from your API
-      const mockOrgData = {
-        organizationName: "Demo Organization",
-        email: formData.email,
-        planStatus: "active", // can be: "active", "not_purchased", "expired"
-        planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-        plan: {
-          planName: "Quarterly",
-          duration: "3 Months",
-        }
-      };
+      const data = await res.json();
 
-      setOrgData(mockOrgData);
-      toastMsg("OTP sent to your email!");
-      setStep("otp");
-    }, 1500);
-  };
-
-  const handleOtpVerify = async () => {
-    const otpValue = otp.join("");
-    if (otpValue.length !== 6) {
-      toastMsg("Please enter the 6-digit OTP", "error");
-      return;
-    }
-
-    setLoading(true);
-
-    // Simulate OTP verification and plan check
-    setTimeout(() => {
-      setLoading(false);
-
-      // Check plan status after successful OTP verification
-      // In real implementation, this data comes from your backend
-
-      // Simulating different scenarios - change planStatus to test:
-      // "active" - has active plan
-      // "not_purchased" - registered but never purchased
-      // "expired" - plan has expired
-
-      const planStatus = orgData?.planStatus || "active";
-
-      if (planStatus === "not_purchased") {
-        setStep("plan-required");
-      } else if (planStatus === "expired") {
-        setStep("plan-expired");
-      } else {
-        // Plan is active - store org session and redirect to user login
-        localStorage.setItem("activeOrg", JSON.stringify({
-          ...orgData,
-          isAuthenticated: true,
-          loginTime: new Date().toISOString(),
-        }));
-
-        toastMsg("Login successful!");
-        setTimeout(() => nav("/"), 1500);
+      if (!res.ok) {
+        toastMsg(data.error || "Login failed!", "error");
+        setLoading(false);
+        return;
       }
-    }, 1500);
-  };
 
-  const resendOtp = async () => {
-    setOtp(["", "", "", "", "", ""]);
-    otpRefs.current[0]?.focus();
-    setLoading(true);
-    setTimeout(() => {
+      // Check if organization requires plan purchase
+      if (data.requiresPlan) {
+        setOrgData({
+          id: data.organization.id,
+          organizationName: data.organization.organizationName,
+          email: data.organization.email,
+          planStatus: data.planStatus,
+          planExpiry: data.organization.planExpiry,
+        });
+
+        if (data.planStatus === "not_purchased") {
+          setStep("plan-required");
+        } else if (data.planStatus === "expired") {
+          setStep("plan-expired");
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Plan is active - store org session and redirect to user login
+      localStorage.setItem("activeOrg", JSON.stringify({
+        id: data.organization.id,
+        organizationName: data.organization.organizationName,
+        email: data.organization.email,
+        hasActivePlan: true,
+        planType: data.organization.planType,
+        planStartDate: data.organization.planStartDate,
+        planEndDate: data.organization.planEndDate,
+        token: data.token,
+        isAuthenticated: true,
+        loginTime: new Date().toISOString(),
+      }));
+
+      toastMsg("Login successful!");
+      setTimeout(() => nav("/"), 1500);
+    } catch (err) {
+      console.error("Login error:", err);
+      toastMsg("Failed to connect to server!", "error");
+    } finally {
       setLoading(false);
-      toastMsg("OTP resent successfully!");
-    }, 1000);
+    }
   };
 
   const backToLogin = () => {
     setStep("login");
-    setOtp(["", "", "", "", "", ""]);
   };
 
   const goToPlans = () => {
-    // Store org data for plan purchase
-    localStorage.setItem("orgSession", JSON.stringify(orgData));
+    // Store org data for plan purchase (include id for payment flow)
+    localStorage.setItem("pendingOrg", JSON.stringify({
+      id: orgData.id,
+      organizationName: orgData.organizationName,
+      email: orgData.email,
+    }));
     nav("/org/plans");
   };
 
@@ -241,8 +214,8 @@ export default function OrganizationLoginPage() {
         </div>
       )}
 
-      {/* Login and OTP screens */}
-      {(step === "login" || step === "otp") && (
+      {/* Login screen */}
+      {step === "login" && (
         <div style={styles.container}>
           {/* Left Side - Branding */}
           <div style={styles.leftSection}>
@@ -273,93 +246,46 @@ export default function OrganizationLoginPage() {
           <div style={styles.rightSection}>
             <div style={styles.formContainer}>
               {/* Login Form */}
-              {step === "login" && (
-                <>
-                  <h2 style={styles.formTitle}>Sign In</h2>
-                  <p style={styles.formSubtitle}>Enter your organization credentials</p>
-                  <BottomLine style={{ borderBottom: "2px solid #e5e7eb", margin: "0 0 28px 0" }} />
+              <h2 style={styles.formTitle}>Sign In</h2>
+              <p style={styles.formSubtitle}>Enter your organization credentials</p>
+              <BottomLine style={{ borderBottom: "2px solid #e5e7eb", margin: "0 0 28px 0" }} />
 
-                  <form onSubmit={handleLogin} style={styles.form}>
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>
-                        <FontAwesomeIcon icon={faEnvelope} style={styles.labelIcon} />
-                        Organization Email
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        placeholder="Enter your organization email"
-                        value={formData.email}
-                        onChange={handleChange}
-                        style={styles.input}
-                      />
-                    </div>
+              <form onSubmit={handleLogin} style={styles.form}>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>
+                    <FontAwesomeIcon icon={faEnvelope} style={styles.labelIcon} />
+                    Organization Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your organization email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                </div>
 
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>
-                        <FontAwesomeIcon icon={faLock} style={styles.labelIcon} />
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        name="password"
-                        placeholder="Enter your password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        style={styles.input}
-                      />
-                    </div>
+                <div style={styles.inputGroup}>
+                  <label style={styles.label}>
+                    <FontAwesomeIcon icon={faLock} style={styles.labelIcon} />
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    style={styles.input}
+                  />
+                </div>
 
-                    <button type="submit" style={styles.primaryBtn}>
-                      Continue
-                      <FontAwesomeIcon icon={faArrowRight} style={{ marginLeft: 10 }} />
-                    </button>
-                  </form>
-                </>
-              )}
-
-              {/* OTP Verification */}
-              {step === "otp" && (
-                <>
-                  <div style={styles.otpIconWrapper}>
-                    <FontAwesomeIcon icon={faCommentDots} style={styles.otpIconLarge} />
-                  </div>
-                  <h2 style={styles.formTitleCenter}>Verify Your Identity</h2>
-                  <p style={styles.otpDescription}>
-                    We've sent a 6-digit verification code to<br />
-                    <strong>{formData.email}</strong>
-                  </p>
-
-                  <div style={styles.otpInputRow}>
-                    {otp.map((v, i) => (
-                      <input
-                        key={i}
-                        type="text"
-                        maxLength="1"
-                        value={v}
-                        ref={(el) => (otpRefs.current[i] = el)}
-                        onChange={(e) => handleOtp(i, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(i, e)}
-                        style={styles.otpInput}
-                      />
-                    ))}
-                  </div>
-
-                  <button onClick={handleOtpVerify} style={styles.primaryBtn}>
-                    Verify & Continue
-                  </button>
-
-                  <div style={styles.otpFooter}>
-                    <p style={styles.otpFooterText}>
-                      Didn't receive the code?{" "}
-                      <span style={styles.link} onClick={resendOtp}>Resend</span>
-                    </p>
-                    <p style={styles.otpFooterText}>
-                      <span style={styles.link} onClick={backToLogin}>Back to Sign In</span>
-                    </p>
-                  </div>
-                </>
-              )}
+                <button type="submit" style={styles.primaryBtn}>
+                  Sign In
+                  <FontAwesomeIcon icon={faArrowRight} style={{ marginLeft: 10 }} />
+                </button>
+              </form>
 
               <div style={styles.footer}>
                 <p style={styles.footerText}>
