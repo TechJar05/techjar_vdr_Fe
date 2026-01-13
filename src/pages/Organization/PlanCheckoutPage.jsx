@@ -21,6 +21,7 @@ import {
 import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function PlanCheckoutPage() {
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     couponCode: "",
   });
@@ -343,7 +344,7 @@ export default function PlanCheckoutPage() {
           </p>
         </div>
 
-        <footer style={styles.copyright}>© 2024 VDR. All rights reserved.</footer>
+        <footer style={styles.copyright}>© {currentYear} TechJar VDR. All rights reserved.</footer>
       </div>
     );
   }
@@ -531,7 +532,7 @@ export default function PlanCheckoutPage() {
         </div>
       </div>
 
-      <footer style={styles.copyright}>© 2024 VDR. All rights reserved.</footer>
+      <footer style={styles.copyright}>© {currentYear} TechJar VDR. All rights reserved.</footer>
     </div>
   );
 }

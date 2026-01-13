@@ -21,6 +21,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function PlanSelectionPage() {
+  const currentYear = new Date().getFullYear();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [toast, setToast] = useState({ message: "", type: "" });
   const [loading, setLoading] = useState(false);
@@ -267,7 +268,7 @@ export default function PlanSelectionPage() {
         </div>
       </div>
 
-      <footer style={styles.copyright}>© 2024 VDR. All rights reserved.</footer>
+      <footer style={styles.copyright}>© {currentYear} TechJar VDR. All rights reserved.</footer>
     </div>
   );
 }

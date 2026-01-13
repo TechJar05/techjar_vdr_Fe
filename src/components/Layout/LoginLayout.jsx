@@ -2,7 +2,10 @@ import React from "react";
 import loginImage from "../../assets/images/27795.jpg";
 import coverPattern from "../../assets/images/cover-pattern.png";
 
+
+
 const LoginLayout = ({ children }) => {
+  const currentYear = new Date().getFullYear();
   return (
     <div style={styles.mainContainer}>
       <div style={styles.circleOne} />
@@ -17,7 +20,7 @@ const LoginLayout = ({ children }) => {
           <div style={styles.formWrapper}>{children}</div>
         </div>
       </div>
-      <footer style={styles.footer}>© 2024 VDR.</footer>
+      <footer style={styles.footer}>© {currentYear} TechJar VDR. All rights reserved.</footer>
     </div>
   );
 };

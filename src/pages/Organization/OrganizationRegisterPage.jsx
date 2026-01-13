@@ -22,6 +22,7 @@ import {
 import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function OrganizationRegisterPage() {
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     organizationName: "",
     email: "",
@@ -330,7 +331,7 @@ export default function OrganizationRegisterPage() {
         </div>
       </div>
 
-      <footer style={styles.copyright}>© 2024 VDR. All rights reserved.</footer>
+      <footer style={styles.copyright}>© {currentYear} TechJar VDR. All rights reserved.</footer>
     </div>
   );
 }

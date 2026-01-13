@@ -17,6 +17,7 @@ import {
 import { API_BASE_URL } from "../../config/apiConfig";
 
 export default function OrganizationLoginPage() {
+  const currentYear = new Date().getFullYear();
   const [step, setStep] = useState("login"); // login, plan-required, plan-expired
   const [formData, setFormData] = useState({
     email: "",
@@ -300,7 +301,7 @@ export default function OrganizationLoginPage() {
         </div>
       )}
 
-      <footer style={styles.copyright}>© 2024 VDR. All rights reserved.</footer>
+      <footer style={styles.copyright}>© {currentYear} TechJar VDR. All rights reserved.</footer>
     </div>
   );
 }
