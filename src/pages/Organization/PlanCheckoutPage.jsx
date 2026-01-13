@@ -474,7 +474,7 @@ export default function PlanCheckoutPage() {
                 <div style={styles.planInfo}>
                   <div style={styles.planRow}>
                     <span style={styles.planLabel}>{planData.planName} Plan</span>
-                    <span style={styles.planPrice}>${planData.price}</span>
+                    <span style={styles.planPrice}>₹{planData.price}</span>
                   </div>
                   <div style={styles.billingInfo}>
                     <FontAwesomeIcon icon={faCalendarAlt} style={{ marginRight: 8 }} />
@@ -482,7 +482,7 @@ export default function PlanCheckoutPage() {
                   </div>
                   {planData.pricePerMonth && (
                     <div style={styles.perMonthInfo}>
-                      ${planData.pricePerMonth}/month
+                      ₹{planData.pricePerMonth}/month
                     </div>
                   )}
                 </div>
@@ -492,17 +492,17 @@ export default function PlanCheckoutPage() {
                 <div style={styles.totalsSection}>
                   <div style={styles.totalRow}>
                     <span>Subtotal</span>
-                    <span>${totals.subtotal}</span>
+                    <span>₹{totals.subtotal}</span>
                   </div>
                   {appliedCoupon && (
                     <div style={{ ...styles.totalRow, color: "#10b981" }}>
                       <span>Discount ({appliedCoupon.code})</span>
-                      <span>-${totals.discount}</span>
+                      <span>-₹{totals.discount}</span>
                     </div>
                   )}
                   <div style={styles.totalRowFinal}>
                     <span>Total</span>
-                    <span>${totals.total}</span>
+                    <span>₹{totals.total}</span>
                   </div>
                 </div>
               </>
