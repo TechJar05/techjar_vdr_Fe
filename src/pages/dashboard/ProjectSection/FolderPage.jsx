@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { FaFolder, FaUpload, FaRegStar, FaEllipsisV, FaDownload, FaEye, FaTrash,FaStar, FaLock } from "react-icons/fa";
+import { FaFolder, FaUpload, FaRegStar, FaEllipsisV, FaDownload, FaEye, FaTrash, FaStar, FaLock, FaTimes, FaUsers, FaLink } from "react-icons/fa";
 
 import Button from "../../../components/Style/Button";
 import BottomLine from "../../../components/Style/BottomLine";
@@ -45,9 +45,18 @@ const FolderPage = () => {
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "info" });
   const [favorites, setFavorites] = useState([]);
-  const [userRole, setUserRole] = useState(localStorage.getItem("role") || "user");
+  const [userRole] = useState(localStorage.getItem("role") || "user");
   const [userAccess, setUserAccess] = useState({}); // { [itemId]: ['VIEW', 'DOWNLOAD', ...] }
-  const [checkingAccess, setCheckingAccess] = useState(false);
+
+  // File viewer modal state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerFile, setViewerFile] = useState(null); // { id, name, url, type }
+
+  // Access info modal state
+  const [accessInfoOpen, setAccessInfoOpen] = useState(false);
+  const [accessInfoFile, setAccessInfoFile] = useState(null);
+  const [accessInfoList, setAccessInfoList] = useState([]);
+  const [accessInfoLoading, setAccessInfoLoading] = useState(false);
 
   const toastMsg = (message, type = "info") => {
     setToast({ message, type });
@@ -72,20 +81,20 @@ const FolderPage = () => {
 
   useEffect(() => {
     loadFavorites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Check user access for folder and files
-  const checkAccessForItems = async () => {
+  const checkAccessForItems = async (currentFiles) => {
     try {
-      setCheckingAccess(true);
-      
       // Check folder access
       const folderCheck = await apiRequest(`/access/check?itemId=${id}&itemType=folder`);
       setUserAccess(prev => ({ ...prev, [id]: folderCheck.accessTypes || [] }));
-      
+
       // Check each file's access
-      if (files && files.length > 0) {
-        for (const file of files) {
+      const filesToCheck = currentFiles || files;
+      if (filesToCheck && filesToCheck.length > 0) {
+        for (const file of filesToCheck) {
           try {
             const fileCheck = await apiRequest(`/access/check?itemId=${file.id}&itemType=file`);
             setUserAccess(prev => ({ ...prev, [file.id]: fileCheck.accessTypes || [] }));
@@ -96,32 +105,33 @@ const FolderPage = () => {
       }
     } catch (e) {
       console.error("Failed to check access", e.message);
-    } finally {
-      setCheckingAccess(false);
     }
   };
 
   useEffect(() => {
     if (files && files.length > 0) {
-      checkAccessForItems();
+      checkAccessForItems(files);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files, id]);
 
   // Poll access every 10 seconds to detect approved requests
   useEffect(() => {
     const interval = setInterval(() => {
-      checkAccessForItems();
+      checkAccessForItems(files);
     }, 10000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files, id]);
 
   // Also re-check access when window regains focus
   useEffect(() => {
     const handleFocus = () => {
-      checkAccessForItems();
+      checkAccessForItems(files);
     };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files, id]);
 
   const favoriteMap = useMemo(() => {
@@ -198,10 +208,12 @@ const FolderPage = () => {
 
   useEffect(() => {
     fetchFolderMeta();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
     fetchFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const handleFileUpload = async (event) => {
@@ -238,9 +250,16 @@ const FolderPage = () => {
 
   const handleView = async (fileId) => {
     try {
+      const file = files.find((f) => f.id === fileId);
       const data = await apiRequest(`/files/view/${fileId}`, { auth: false });
       if (data?.url) {
-        window.open(data.url, "_blank");
+        setViewerFile({
+          id: fileId,
+          name: file?.name || "File",
+          url: data.url,
+          type: file?.type || "",
+        });
+        setViewerOpen(true);
       } else {
         toastMsg("Preview unavailable", "error");
       }
@@ -248,6 +267,41 @@ const FolderPage = () => {
       console.error("View failed", error);
       toastMsg(error.message || "Unable to open file", "error");
     }
+  };
+
+  const closeViewer = () => {
+    setViewerOpen(false);
+    setViewerFile(null);
+  };
+
+  // Copy file URL to clipboard (instead of downloading)
+  const handleCopyUrl = () => {
+    if (viewerFile?.url) {
+      navigator.clipboard.writeText(viewerFile.url);
+      toastMsg("File URL copied to clipboard", "success");
+    }
+  };
+
+  // Get list of users who have access to a file
+  const handleShowAccessInfo = async (fileId, fileName) => {
+    try {
+      setAccessInfoLoading(true);
+      setAccessInfoFile({ id: fileId, name: fileName });
+      const data = await apiRequest(`/access/item-users?itemId=${fileId}&itemType=file`);
+      setAccessInfoList(data || []);
+      setAccessInfoOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch access info", error);
+      toastMsg(error.message || "Unable to fetch access info", "error");
+    } finally {
+      setAccessInfoLoading(false);
+    }
+  };
+
+  const closeAccessInfo = () => {
+    setAccessInfoOpen(false);
+    setAccessInfoFile(null);
+    setAccessInfoList([]);
   };
 
   const handleDownloadFolder = async () => {
@@ -521,6 +575,7 @@ const FolderPage = () => {
                 <th style={styles.tableHeader}>Modified Date</th>
                 <th style={styles.tableHeader}>Modified By</th>
                 <th style={styles.tableHeader}>Version</th>
+                <th style={styles.tableHeader}>Access</th>
                 <th style={{ ...styles.tableHeader, textAlign: "right" }}>Action</th>
               </tr>
             </thead>
@@ -550,6 +605,16 @@ const FolderPage = () => {
                   </td>
                   <td style={styles.tableCell}>{file.modifiedBy}</td>
                   <td style={styles.tableCell}>{file.version}</td>
+                  <td style={styles.tableCell}>
+                    <div
+                      style={styles.accessBadge}
+                      onClick={() => handleShowAccessInfo(file.id, file.name)}
+                      title="View who has access"
+                    >
+                      <FaUsers size={12} />
+                      <span>View</span>
+                    </div>
+                  </td>
                   <td style={styles.tableActionCell}>
                     {userRole === "admin" ? (
                       <>
@@ -642,16 +707,149 @@ const FolderPage = () => {
           <p style={{ textAlign: "center", padding: "20px 0", color: "#6b7280" }}>
             No files uploaded yet.
           </p>
-    )}
-    </div>
+        )}
+      </div>
+
+      {/* File Viewer Modal */}
+      {viewerOpen && viewerFile && (
+        <div style={styles.modalOverlay} onClick={closeViewer}>
+          <div style={styles.viewerModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.viewerHeader}>
+              <h3 style={styles.viewerTitle}>{viewerFile.name}</h3>
+              <div style={styles.viewerActions}>
+                <button
+                  style={styles.viewerBtn}
+                  onClick={handleCopyUrl}
+                  title="Copy file URL"
+                >
+                  <FaLink /> Copy URL
+                </button>
+                <button
+                  style={styles.viewerCloseBtn}
+                  onClick={closeViewer}
+                  title="Close viewer"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            </div>
+            <div style={styles.viewerContent}>
+              {viewerFile.type?.includes("image") ? (
+                <img
+                  src={viewerFile.url}
+                  alt={viewerFile.name}
+                  style={styles.viewerImage}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              ) : viewerFile.type?.includes("pdf") || viewerFile.name?.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={`${viewerFile.url}#toolbar=0&navpanes=0&scrollbar=1`}
+                  style={styles.viewerIframe}
+                  title={viewerFile.name}
+                />
+              ) : viewerFile.type?.includes("video") ? (
+                <video
+                  src={viewerFile.url}
+                  controls
+                  controlsList="nodownload"
+                  style={styles.viewerVideo}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              ) : viewerFile.type?.includes("audio") ? (
+                <audio
+                  src={viewerFile.url}
+                  controls
+                  controlsList="nodownload"
+                  style={styles.viewerAudio}
+                  onContextMenu={(e) => e.preventDefault()}
+                />
+              ) : viewerFile.type?.includes("text") ||
+                  viewerFile.name?.match(/\.(txt|json|xml|csv|md|js|ts|html|css|py|java|c|cpp|h)$/i) ? (
+                <iframe
+                  src={viewerFile.url}
+                  style={styles.viewerIframe}
+                  title={viewerFile.name}
+                />
+              ) : (
+                <div style={styles.viewerUnsupported}>
+                  <p>Preview not available for this file type.</p>
+                  <p style={{ fontSize: "13px", color: "#6b7280", marginTop: "10px" }}>
+                    File type: {viewerFile.type || "Unknown"}
+                  </p>
+                  <button
+                    style={{ ...styles.viewerBtn, marginTop: "20px" }}
+                    onClick={handleCopyUrl}
+                  >
+                    <FaLink /> Copy File URL
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Access Info Modal */}
+      {accessInfoOpen && accessInfoFile && (
+        <div style={styles.modalOverlay} onClick={closeAccessInfo}>
+          <div style={styles.accessModal} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.accessModalHeader}>
+              <h3 style={styles.accessModalTitle}>
+                <FaUsers style={{ marginRight: "8px" }} />
+                Access for: {accessInfoFile.name}
+              </h3>
+              <button
+                style={styles.viewerCloseBtn}
+                onClick={closeAccessInfo}
+                title="Close"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div style={styles.accessModalContent}>
+              {accessInfoLoading ? (
+                <div style={{ textAlign: "center", padding: "30px" }}>
+                  <Spinner />
+                </div>
+              ) : accessInfoList.length > 0 ? (
+                <div style={styles.accessList}>
+                  {accessInfoList.map((user, idx) => (
+                    <div key={idx} style={styles.accessItem}>
+                      <div style={styles.accessAvatar}>
+                        {(user.USER_EMAIL || user.userEmail || "U")[0].toUpperCase()}
+                      </div>
+                      <div style={styles.accessInfo}>
+                        <p style={styles.accessEmail}>
+                          {user.USER_EMAIL || user.userEmail}
+                        </p>
+                        <p style={styles.accessTypes}>
+                          {(user.ACCESS_TYPES || user.accessTypes || "").split(",").map((t, i) => (
+                            <span key={i} style={styles.accessTypeBadge}>
+                              {t.trim()}
+                            </span>
+                          ))}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ textAlign: "center", color: "#6b7280", padding: "20px" }}>
+                  No users have been granted access to this file yet.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const styles = {
   container: {
-    fontFamily: "Arial, sans-serif",
-    background: "#f3f4f6",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
     minHeight: "100vh",
     paddingBottom: "40px",
   },
@@ -659,9 +857,10 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "5px 20px",
-    // background: "#fff",
-    // borderBottom: "1px solid #e5e7eb",
+    padding: "16px 24px",
+    background: "#fff",
+    borderBottom: "1px solid #e2e8f0",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
   },
   leftSection: {
     display: "flex",
@@ -669,51 +868,53 @@ const styles = {
     gap: "20px",
   },
   folderTitle: {
-    fontSize: "17px",
-    fontWeight: "500",
-    alignItems: "center",
-    color: "#111827",
+    fontSize: "20px",
+    fontWeight: "600",
+    color: "#1e293b",
+    margin: 0,
   },
   folderMeta: {
     fontSize: "13px",
-    color: "#6b7280",
+    color: "#64748b",
     marginTop: "4px",
   },
   folderStats: {
     display: "flex",
-    gap: "8px",
+    gap: "12px",
     alignItems: "center",
     fontSize: "13px",
-    color: "#4b5563",
-    marginTop: "6px",
+    color: "#475569",
+    marginTop: "8px",
   },
   rightSection: {
     display: "flex",
     alignItems: "center",
-    gap: "15px",
+    gap: "12px",
   },
   folderGrid: {
     display: "flex",
     flexWrap: "wrap",
     gap: "20px",
-    padding: "20px",
+    padding: "24px",
   },
   folderCard: {
     position: "relative",
     width: "180px",
     height: "160px",
-    backgroundColor: "#f9fafb",
-    borderRadius: "10px",
-    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+    backgroundColor: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
+    transition: "all 0.2s ease",
+    border: "1px solid #e2e8f0",
   },
   folderCardHeader: {
     position: "absolute",
-    top: "16px",
+    top: "14px",
     left: "14px",
     right: "14px",
     display: "flex",
@@ -721,38 +922,42 @@ const styles = {
     alignItems: "center",
   },
   starIcon: {
-    color: "#9ca3af", 
+    color: "#9ca3af",
     fontSize: "18px",
     cursor: "pointer",
+    transition: "color 0.2s ease",
   },
   menuIcon: {
-    color: "#6b7280",
+    color: "#94a3b8",
     fontSize: "15px",
     cursor: "pointer",
   },
   folderLabel: {
     marginTop: "14px",
     fontSize: "14px",
-    fontWeight: "500",
-    color: "#111827",
+    fontWeight: "600",
+    color: "#1e293b",
     textAlign: "center",
   },
   filesContainer: {
     background: "#fff",
-    margin: "20px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-    padding: "20px",
+    margin: "0 24px 24px",
+    borderRadius: "16px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+    padding: "24px",
+    border: "1px solid #e2e8f0",
   },
   filesHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "10px",
+    marginBottom: "20px",
+    paddingBottom: "16px",
+    borderBottom: "1px solid #f1f5f9",
   },
   filesSummary: {
     fontSize: "13px",
-    color: "#6b7280",
+    color: "#64748b",
   },
   table: {
     width: "100%",
@@ -760,19 +965,23 @@ const styles = {
   },
   tableHeader: {
     textAlign: "left",
-    fontSize: "13px",
-    color: "#6b7280",
-    borderBottom: "1px solid #e5e7eb",
-    paddingBottom: "10px",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    borderBottom: "2px solid #e2e8f0",
+    paddingBottom: "12px",
+    paddingRight: "12px",
   },
   tableCell: {
-    padding: "12px 0",
+    padding: "16px 12px 16px 0",
     borderBottom: "1px solid #f1f5f9",
     fontSize: "14px",
-    color: "#111827",
+    color: "#334155",
   },
   favoriteCell: {
-    padding: "12px 0",
+    padding: "16px 0",
     borderBottom: "1px solid #f1f5f9",
     textAlign: "center",
   },
@@ -780,6 +989,7 @@ const styles = {
     color: "#fbbf24",
     cursor: "pointer",
     fontSize: "16px",
+    transition: "transform 0.2s ease",
   },
   tableActionCell: {
     textAlign: "right",
@@ -787,7 +997,219 @@ const styles = {
     gap: "8px",
     justifyContent: "flex-end",
     borderBottom: "1px solid #f1f5f9",
-    padding: "12px 0",
+    padding: "16px 0",
+  },
+  // Access badge styles
+  accessBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "4px 10px",
+    background: "#eff6ff",
+    color: "#1e40af",
+    borderRadius: "16px",
+    fontSize: "12px",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    border: "1px solid #bfdbfe",
+  },
+  // Modal overlay styles
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0, 0, 0, 0.6)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2000,
+    backdropFilter: "blur(4px)",
+  },
+  // File viewer modal styles
+  viewerModal: {
+    background: "#fff",
+    borderRadius: "16px",
+    width: "90%",
+    maxWidth: "1100px",
+    height: "85vh",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+    overflow: "hidden",
+  },
+  viewerHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "16px 24px",
+    borderBottom: "1px solid #e5e7eb",
+    background: "#f9fafb",
+  },
+  viewerTitle: {
+    margin: 0,
+    fontSize: "16px",
+    fontWeight: 600,
+    color: "#111827",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    maxWidth: "60%",
+  },
+  viewerActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  viewerBtn: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 14px",
+    background: "#eff6ff",
+    color: "#1e40af",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "13px",
+    fontWeight: 500,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+  },
+  viewerCloseBtn: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "36px",
+    height: "36px",
+    background: "#f3f4f6",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    color: "#6b7280",
+    fontSize: "16px",
+    transition: "all 0.2s ease",
+  },
+  viewerContent: {
+    flex: 1,
+    overflow: "auto",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#1f2937",
+    padding: "20px",
+  },
+  viewerImage: {
+    maxWidth: "100%",
+    maxHeight: "100%",
+    objectFit: "contain",
+    borderRadius: "8px",
+    userSelect: "none",
+    pointerEvents: "none",
+  },
+  viewerIframe: {
+    width: "100%",
+    height: "100%",
+    border: "none",
+    borderRadius: "8px",
+    background: "#fff",
+  },
+  viewerVideo: {
+    maxWidth: "100%",
+    maxHeight: "100%",
+    borderRadius: "8px",
+  },
+  viewerAudio: {
+    width: "80%",
+    maxWidth: "500px",
+  },
+  viewerUnsupported: {
+    textAlign: "center",
+    color: "#fff",
+    padding: "40px",
+  },
+  // Access info modal styles
+  accessModal: {
+    background: "#fff",
+    borderRadius: "16px",
+    width: "90%",
+    maxWidth: "500px",
+    maxHeight: "70vh",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+    overflow: "hidden",
+  },
+  accessModalHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "16px 20px",
+    borderBottom: "1px solid #e5e7eb",
+    background: "#f9fafb",
+  },
+  accessModalTitle: {
+    margin: 0,
+    fontSize: "15px",
+    fontWeight: 600,
+    color: "#111827",
+    display: "flex",
+    alignItems: "center",
+  },
+  accessModalContent: {
+    flex: 1,
+    overflow: "auto",
+    padding: "16px 20px",
+  },
+  accessList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
+  accessItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    padding: "12px",
+    background: "#f9fafb",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+  },
+  accessAvatar: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 600,
+    fontSize: "16px",
+  },
+  accessInfo: {
+    flex: 1,
+  },
+  accessEmail: {
+    margin: 0,
+    fontSize: "14px",
+    fontWeight: 500,
+    color: "#111827",
+  },
+  accessTypes: {
+    margin: "4px 0 0",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px",
+  },
+  accessTypeBadge: {
+    display: "inline-block",
+    padding: "2px 8px",
+    background: "#dcfce7",
+    color: "#166534",
+    borderRadius: "12px",
+    fontSize: "11px",
+    fontWeight: 500,
   },
 };
 

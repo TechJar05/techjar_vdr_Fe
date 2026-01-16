@@ -9,6 +9,18 @@ const Sidebar = ({ isOpen }) => {
   const navigate = useNavigate();
   const [storage, setStorage] = useState({ totalQuotaMb: 5000, usedMb: 0, percentUsed: 0 });
   const [storageLoading, setStorageLoading] = useState(false);
+  const [userRole, setUserRole] = useState(localStorage.getItem("role") || "user");
+
+  // Check for role changes
+  useEffect(() => {
+    const checkRole = () => {
+      const role = localStorage.getItem("role") || "user";
+      setUserRole(role);
+    };
+    checkRole();
+    window.addEventListener("storage", checkRole);
+    return () => window.removeEventListener("storage", checkRole);
+  }, []);
 
   // Function to handle navigation to different routes
   const handleNavigation = (path) => {
@@ -47,8 +59,8 @@ const Sidebar = ({ isOpen }) => {
 
   const styles = {
     sidebar: {
-      width: "230px",
-      backgroundColor: "#1e3a8a",
+      width: "250px",
+      background: "linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)",
       color: "#fff",
       height: "100vh",
       position: "fixed",
@@ -59,56 +71,74 @@ const Sidebar = ({ isOpen }) => {
       display: "flex",
       flexDirection: "column",
       justifyContent: "space-between",
-      padding: "5px 0",
+      padding: "0",
       zIndex: 1000,
+      boxShadow: "4px 0 20px rgba(0, 0, 0, 0.15)",
     },
     logo: {
       textAlign: "center",
-      marginBottom: "2rem",
-      marginTop: "10px",
+      padding: "24px 20px",
+      borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
     },
     logoImg: {
-      width: "100px",
+      width: "110px",
+      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))",
     },
     menu: {
       display: "flex",
       flexDirection: "column",
-      marginLeft: "18px",
+      padding: "16px 12px",
+      gap: "4px",
     },
     menuItem: {
       display: "flex",
       alignItems: "center",
-      gap: "10px",
+      gap: "12px",
       cursor: "pointer",
-      opacity: 0.9,
-      borderRadius: "4px",
-      fontWeight: "300",
-      transition: "background-color 0.3s ease, color 0.3s ease",
-      padding: "10px",
+      borderRadius: "10px",
+      fontWeight: "400",
+      fontSize: "14px",
+      transition: "all 0.2s ease",
+      padding: "12px 16px",
+      color: "rgba(255, 255, 255, 0.85)",
     },
     activeMenuItem: {
-      fontWeight: "500",
-      transform: "scale(1.1)",
+      fontWeight: "600",
+      background: "rgba(255, 255, 255, 0.15)",
+      color: "#fff",
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
     },
     footer: {
-      paddingLeft: "25px",
-      marginBottom: "4rem",
-      fontSize: "12px",
-      opacity: "0.8",
+      padding: "20px",
+      margin: "12px",
+      marginBottom: "24px",
+      fontSize: "13px",
+      background: "rgba(255, 255, 255, 0.1)",
+      borderRadius: "12px",
+      cursor: "pointer",
+      transition: "all 0.2s ease",
     },
     progressBar: {
-      height: "6px",
-      width: "90%",
-      background: "#3749b4",
+      height: "8px",
+      width: "100%",
+      background: "rgba(255, 255, 255, 0.2)",
       borderRadius: "4px",
       overflow: "hidden",
-      marginTop: "5px",
+      marginTop: "8px",
     },
     progress: {
       height: "100%",
-      background: storage.percentUsed > 80 ? "#ef4444" : "#10b981",
+      background: storage.percentUsed > 80
+        ? "linear-gradient(90deg, #ef4444, #f87171)"
+        : "linear-gradient(90deg, #10b981, #34d399)",
       transition: "width 0.3s ease",
       width: `${storage.percentUsed}%`,
+      borderRadius: "4px",
+    },
+    storageText: {
+      margin: "8px 0 0",
+      fontSize: "12px",
+      color: "rgba(255, 255, 255, 0.7)",
     },
   };
 
@@ -142,49 +172,54 @@ const Sidebar = ({ isOpen }) => {
             <FaStar /> Favourite
           </div>
 
-          {/* User */}
-          <div
-            style={{
-              ...styles.menuItem,
-              ...(isActive("/users") && styles.activeMenuItem),
-            }}
-            onClick={() => handleNavigation("/users")}
-          >
-            <FaUser /> User
-          </div>
+          {/* Admin-only menu items */}
+          {userRole === "admin" && (
+            <>
+              {/* User */}
+              <div
+                style={{
+                  ...styles.menuItem,
+                  ...(isActive("/users") && styles.activeMenuItem),
+                }}
+                onClick={() => handleNavigation("/users")}
+              >
+                <FaUser /> User
+              </div>
 
-          {/* User Group */}
-          <div
-            style={{
-              ...styles.menuItem,
-              ...(isActive("/userGroup") && styles.activeMenuItem),
-            }}
-            onClick={() => handleNavigation("/userGroup")}
-          >
-            <FaUsers /> User Group
-          </div>
+              {/* User Group */}
+              <div
+                style={{
+                  ...styles.menuItem,
+                  ...(isActive("/userGroup") && styles.activeMenuItem),
+                }}
+                onClick={() => handleNavigation("/userGroup")}
+              >
+                <FaUsers /> User Group
+              </div>
 
-          {/* User Access Request */}
-          <div
-            style={{
-              ...styles.menuItem,
-              ...(isActive("/userAccess") && styles.activeMenuItem),
-            }}
-            onClick={() => handleNavigation("/userAccess")}
-          >
-            <FaClipboardList /> User Access Request
-          </div>
+              {/* User Access Request */}
+              <div
+                style={{
+                  ...styles.menuItem,
+                  ...(isActive("/userAccess") && styles.activeMenuItem),
+                }}
+                onClick={() => handleNavigation("/userAccess")}
+              >
+                <FaClipboardList /> User Access Request
+              </div>
 
-          {/* User Logs */}
-          <div
-            style={{
-              ...styles.menuItem,
-              ...(isActive("/logs") && styles.activeMenuItem),
-            }}
-            onClick={() => handleNavigation("/logs")}
-          >
-            <FaClipboardList /> User Logs
-          </div>
+              {/* User Logs */}
+              <div
+                style={{
+                  ...styles.menuItem,
+                  ...(isActive("/logs") && styles.activeMenuItem),
+                }}
+                onClick={() => handleNavigation("/logs")}
+              >
+                <FaClipboardList /> User Logs
+              </div>
+            </>
+          )}
 
           {/* Trash */}
           <div
@@ -223,11 +258,14 @@ const Sidebar = ({ isOpen }) => {
 
 
       <div style={styles.footer} onClick={() => handleNavigation("/storage")}>
-        <p>Storage ({storage.percentUsed.toFixed(1)}% full)</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontWeight: 600 }}>Storage</span>
+          <span style={{ fontSize: "12px", opacity: 0.8 }}>{storage.percentUsed.toFixed(1)}%</span>
+        </div>
         <div style={styles.progressBar}>
           <div style={styles.progress}></div>
         </div>
-        <p>{storage.usedMb.toFixed(1)} MB of {storage.totalQuotaMb} MB used</p>
+        <p style={styles.storageText}>{storage.usedMb.toFixed(1)} MB of {storage.totalQuotaMb} MB</p>
       </div>
     </div>
   );
