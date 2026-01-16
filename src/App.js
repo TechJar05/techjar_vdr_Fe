@@ -23,24 +23,37 @@ import PlanSelectionPage from "./pages/Organization/PlanSelectionPage";
 import PlanCheckoutPage from "./pages/Organization/PlanCheckoutPage";
 
 const DashboardLayout = ({ sidebarOpen, toggleSidebar }) => (
-  <div style={{ display: "flex", height: "100vh" }}>
+  <div style={{ display: "flex", minHeight: "100vh" }}>
     <Sidebar isOpen={sidebarOpen} />
     <div
       style={{
         flexGrow: 1,
         transition: "margin-left 0.3s ease",
-        marginLeft: sidebarOpen ? "230px" : "0px",
+        marginLeft: sidebarOpen ? "250px" : "0px",
         background: "#f9fafb",
         display: "flex",
         flexDirection: "column",
+        minHeight: "100vh",
       }}
     >
-      <Topbar
-        onToggleSidebar={toggleSidebar}
-        sidebarOpen={sidebarOpen}
-        // user={{ fullName}}
-      />
-      <div style={{ flexGrow: 1, overflowY: "auto", padding: "20px" }}>
+      {/* Fixed Topbar */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: sidebarOpen ? "250px" : "0px",
+          right: 0,
+          zIndex: 999,
+          transition: "left 0.3s ease",
+        }}
+      >
+        <Topbar
+          onToggleSidebar={toggleSidebar}
+          sidebarOpen={sidebarOpen}
+        />
+      </div>
+      {/* Main content with top padding for fixed topbar */}
+      <div style={{ flexGrow: 1, overflowY: "auto", padding: "20px", marginTop: "60px" }}>
         <Routes>
           {/* Dashboard routes (keep these inside the layout) */}
           <Route path="/project" element={<DashboardPage />} />
